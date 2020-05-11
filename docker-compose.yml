@@ -1,0 +1,65 @@
+version: '2.3'
+services:
+
+  # Nodo 1 - Elasticsearch
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.6.2
+    container_name: elasticsearch
+    networks: ['elk']
+    volumes:
+      - /Volumes/Elastic/data:/usr/share/elasticsearch/data:delegated
+      - /Volumes/Elastic/logs:/usr/share/elasticsearch/logs/:delegated
+      - /Volumes/Elastic/config/elasticsearch/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml:ro
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    environment:
+      - cluster.name=es-docker
+#      - cluster.initial_master_nodes=elasticsearch
+      - discovery.type=single-node
+      - node.name=node1
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms2g -Xmx2g"
+    mem_limit: 4g
+    ports:
+      - 9200:9200
+#    restart: "no"
+    restart: "always"
+
+  # Nodo 2 - Kibana
+  kibana:
+    image: docker.elastic.co/kibana/kibana:7.6.2
+    container_name: kibana
+    volumes:
+      - /Volumes/Elastic/config/kibana/:/usr/share/kibana/config:ro
+    networks: ['elk']
+    ports:
+      - 5601:5601
+    depends_on:
+      - elasticsearch
+#    restart: "no"
+    mem_limit: 1g
+    restart: "always"
+
+  # Nodo 3 - Logstash
+  logstash:
+      image: docker.elastic.co/logstash/logstash:7.6.2
+      container_name: logstash
+      volumes:
+        - /Volumes/Elastic/config/logstash/logstash.conf:/usr/share/logstash/pipeline/logstash.conf:ro
+      networks: ['elk']
+      ports:
+        - "5044:5044"
+      depends_on:
+        - elasticsearch
+#      restart: "no"
+      restart: "always"
+      mem_limit: 2g
+      environment:
+        - "LS_JAVA_OPTS=-Xmx1g -Xms1g"
+
+networks: {elk: {}}
